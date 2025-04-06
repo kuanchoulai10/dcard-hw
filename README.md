@@ -1,4 +1,4 @@
-# 2020 Dcard DE Intern - Take-home Test
+# 2020 Dcard DE Intern
 
 ## 為什麼會有這份作業？
 
@@ -16,11 +16,13 @@
 
 訓練集的文章涵蓋日期範圍從 2019 年的 4 月 1 日開始，持續到同年 10 月底，共 7 個月左右。總篇數有 79.4 萬篇左右，其中約有 2.32% 的文章是熱門文章，約莫是 1.8 萬篇。
 
+```
 posts_train                總共有   793,751 筆資料和 3 個欄位
 post_shared_train          總共有   304,260 筆資料和 3 個欄位
 post_comment_created_train 總共有 2,372,228 筆資料和 3 個欄位
 post_liked_train           總共有 3,395,903 筆資料和 3 個欄位
 post_collected_train       總共有 1,235,126 筆資料和 3 個欄位
+```
 
 posts_train
 
@@ -54,13 +56,15 @@ post_collected_train
 
 ## 測試資料集
 
+```
 posts_test                 總共有   225,986 筆資料和 3 個欄位
 post_shared_test           總共有    83,376 筆資料和 3 個欄位
 post_comment_created_test  總共有   607,251 筆資料和 3 個欄位
 post_liked_test            總共有   908,910 筆資料和 3 個欄位
 post_collected_test        總共有   275,073 筆資料和 3 個欄位
+```
 
-# Evaluation metrics
+## Evaluation metrics
 
 在做 offline evaluation 的時候只會使用每篇文章前 10 小時的資料當作是預測資料
 以 f1-score 為主
@@ -98,7 +102,7 @@ post_collected_test        總共有   275,073 筆資料和 3 個欄位
             - post_key: string type
             - is_trending: bool type
 
-# 使用方法
+## 使用方法
 
 環境：
 
@@ -107,7 +111,9 @@ post_collected_test        總共有   275,073 筆資料和 3 個欄位
 - Python 所需套件及其版本已整理至 `requirement.txt`。
 
 由於 `quiz.pdf` 裡所提到的繳交格式必須把格式寫死，例如連線至資料庫時的 `user`, `password` 等。**為求慎重，命令列參數的傳遞格式有稍作修改，以符合使用需求**。以下是 `training.py`, `predict.py` 的使用方法。
-## `training.py`
+
+### `training.py`
+
 `training.py` 的使用方法簡介如下：
 
 ```
@@ -140,11 +146,7 @@ python training.py -u "USERNAME"\
                     "OUTPUT_PATH"
     ```
 
-
-</br>
-
-
-!!! danger "注意"
+!!! danger
 
     由於訓練過後是產出「最佳模型」和「交叉驗證結果」兩份檔案，預設名稱分別為 `best_model.h5`, `cv_results.csv`（無法更改），因此在傳遞 `OUTPUT_PATH` 時，只需給定「資料夾名稱」即可。
 
@@ -173,7 +175,8 @@ python training.py -u "USERNAME"\
     ```
 
 
-## `predict.py`
+### `predict.py`
+
 `predict.py` 的使用方法簡介如下：
 
 ```
