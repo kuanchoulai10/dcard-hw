@@ -1,0 +1,5 @@
+site_name: side-projects/data-mesh
+docs_dir: .
+nav:
+  - README.md
+  - eda_evaluation.ipynb
