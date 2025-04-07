@@ -10,18 +10,18 @@ To simplify the problem, **we define a trending post as one that receives at lea
 
 !!! abstract
 
-    ```shell
+    ```
     $ tree
     .
-    ├── eda_evaluation.ipynb: A Jupyter notebook used for generating visualizations.
+    ├── requirements.txt: A list of required Python packages and their versions.
+    ├── preprocessing.py: A shared utility script for database connections, preprocessing, and other common functions.
+    ├── training.py: A utility script for training the model.
+    ├── predict.py: A utility script for making predictions.
     ├── outputs
     │   ├── best_model.h5: The best model obtained after training.
     │   ├── cv_results.csv: Cross-validation results.
-    │   └── output.csv: Prediction results for the public dataset.
-    ├── predict.py: A utility script for making predictions.
-    ├── preprocessing.py: A shared utility script for database connections, preprocessing, and other common functions.
-    ├── requirements.txt: A list of required Python packages and their versions.
-    └── training.py: A utility script for training the model.
+    │   └── output.csv: Prediction results for the public testing dataset.
+    └── eda_evaluation.ipynb: A Jupyter notebook used for generating visualizations.
     ```
 
     The training dataset includes articles spanning from April 1, 2019, to the end of October 2019, covering approximately seven months. The dataset contains around 793,000 articles, of which about 2.32% (approximately 18,000 articles) are classified as popular. Through exploratory data analysis, we observed high correlations among variables. Additionally, the timing of article publication significantly influences the proportion of popular articles and the total number of likes within the first 36 hours of posting.
@@ -29,13 +29,13 @@ To simplify the problem, **we define a trending post as one that receives at lea
     We decided to use a "binary classification model without considering sequential information" as our primary approach, focusing on handling imbalanced datasets, tree-based ensemble models, and subsequent discussions. The training process was divided into three main stages:
 
     1. Resampling
-    2. Column Transformation
+    2. Feature Transformation
     3. Classification
 
-    After experimentation, we opted to omit the "feature transformation" stage. In total, 108 combinations were tested using `GridSearchCV` with `cv=3` to find the optimal configuration.
+    After experimentation, we opted to omit the "Feature Transformation" stage. In total, 108 combinations were tested using `GridSearchCV` with `cv=3` to find the optimal configuration.
 
     Using the f1-score as the evaluation metric, the best-performing model was an `AdaBoostClassifier` without any resampling. This model consisted of 100 decision trees, each limited to a depth of 2. The average f1-score from cross-validation was 0.56, while the f1-score on the public test set was 0.53. Key findings from the experiments include:
-    
+
     - Different resampling strategies significantly impact the f1-score.
     - Resampling strategies can effectively identify genuinely popular articles. However, this comes at the cost of reduced trust in the model's predictions of popular articles.
     - Under both "SMOTE resampling" and "no resampling" scenarios, the choice of classifier did not lead to substantial changes in the f1-score.
@@ -55,7 +55,7 @@ post_liked_train           Contains 3,395,903 records and 3 columns
 post_collected_train       Contains 1,235,126 records and 3 columns
 ```
 
-### Table: `posts_train`
+Table: `posts_train`
 
 | column_name        | data_type | description                                         |
 |--------------------|-----------|-----------------------------------------------------|
@@ -63,7 +63,7 @@ post_collected_train       Contains 1,235,126 records and 3 columns
 | `created_at_hour`  | datetime  | The hour when the post was created                 |
 | `like_count_36_hour` | integer | Number of likes the post received within 36 hours (only in train table) |
 
-### Table: `post_shared_train`
+Table: `post_shared_train`
 
 | column_name        | data_type | description                                         |
 |--------------------|-----------|-----------------------------------------------------|
@@ -72,7 +72,7 @@ post_collected_train       Contains 1,235,126 records and 3 columns
 | `count`            | integer   | Number of shares the post received in that hour    |
 
 
-### Table: `post_comment_created_train`
+Table: `post_comment_created_train`
 
 | column_name        | data_type | description                                         |
 |--------------------|-----------|-----------------------------------------------------|
@@ -81,7 +81,7 @@ post_collected_train       Contains 1,235,126 records and 3 columns
 | `count`            | integer   | Number of comments the post received in that hour  |
 
 
-### Table: `post_liked_train`
+Table: `post_liked_train`
 
 | column_name        | data_type | description                                         |
 |--------------------|-----------|-----------------------------------------------------|
@@ -90,7 +90,7 @@ post_collected_train       Contains 1,235,126 records and 3 columns
 | `count`            | integer   | Number of likes the post received in that hour     |
 
 
-### Table: `post_collected_train`
+Table: `post_collected_train`
 
 | column_name        | data_type | description                                         |
 |--------------------|-----------|-----------------------------------------------------|
@@ -117,17 +117,18 @@ For offline evaluation, only the first 10 hours of data for each post will be us
 
 Upon completing the assignment, you must submit at least the following four files. Failure to include any of these will be considered incomplete.
 
-1. Report.pdf
+1. `Report.pdf`
     - Instructions on how to use your code
     - Methods and rationale
     - Evaluation results on the provided testing data
     - Experimental observations
-2. train.py
-3. predict.py
-4. requirements.txt or Pipfile
+2. `train.py`
+3. `predict.py`
+4. `requirements.txt` or Pipfile
 5. (Optional) If your prediction requires a model file, please include it (we will not train it for you) and explain how to use it in Report.pdf.
 
 We have some requirements for the program structure to facilitate testing:
+
 - Training
     - The outermost layer should be wrapped in train.py.
     - The program should be executable as `python train.py {database_host} {model_filepath}`.
@@ -152,7 +153,6 @@ Environment:
 - Python version: Python 3.6.8
 - Required Python packages and their versions are listed in `requirements.txt`.
 
-As mentioned in `quiz.pdf`, the submission format must include hardcoded parameters such as `user` and `password` for database connections. **To ensure clarity, the command-line argument format has been slightly modified to meet usage requirements.** Below are the usage instructions for `training.py` and `predict.py`.
 
 ### `training.py`
 
