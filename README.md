@@ -1,12 +1,12 @@
-# 2020 Dcard DE Intern
+# 2020 Dcard Data Engineering Intern
 
-## Why is this assignment given?
+Dcard is a popular social media platform in Taiwan, especially among college students and young adults. It was launched in 2011 as a university-only online forum, similar in spirit to how Facebook started within universities.
 
-This is a pre-interview assignment for the 2020 Dcard Data Engineer Internship Program.
+This project is a pre-interview assignment for the 2020 Dcard Data Engineer Internship Program.
 
-On Dcard, there is an important section called "Trending Posts," where users can find the hottest discussion topics on the platform. As data enthusiasts, we are also curious about which posts have the potential to become trending. If we consider this factor in our recommendations, we might help users discover great posts faster. Therefore, in this assignment, we aim to predict whether a post has the potential to appear in the "Trending Posts" section based on some data.
+On Dcard's app and website, there is an important section called "Trending Posts," where users can find the hottest discussion topics on the platform. **As data enthusiasts, we are also curious about which posts have the potential to become trending**. If we consider this factor in our recommendations, we might help users discover great posts faster. Therefore, in this assignment, **we aim to predict whether a post has the potential to appear in the "Trending Posts" section based on some data.**
 
-To simplify the problem, we define a trending post as one that receives at least 1000 likes within 36 hours of being posted. During testing, we will calculate whether a post's like count exceeds 1000 within 36 hours to determine the ground truth or prediction benchmark.
+To simplify the problem, **we define a trending post as one that receives at least 1000 likes within 36 hours of being posted.** During testing, we will calculate whether a post's like count exceeds 1000 within 36 hours to determine the ground truth or prediction benchmark.
 
 ## Training Dataset
 
@@ -20,35 +20,49 @@ post_liked_train           Contains 3,395,903 records and 3 columns
 post_collected_train       Contains 1,235,126 records and 3 columns
 ```
 
-posts_train
+### Table: `posts_train`
 
-- post_key
-- created_at_hour
-- like_count_36_hour
+| column_name        | data_type | description                                         |
+|--------------------|-----------|-----------------------------------------------------|
+| `post_key`         | string    | Unique identifier of the post                      |
+| `created_at_hour`  | datetime  | The hour when the post was created                 |
+| `like_count_36_hour` | integer | Number of likes the post received within 36 hours (only in train table) |
 
-post_shared_train
+### Table: `post_shared_train`
 
-- post_key
-- created_at_hour
-- count
+| column_name        | data_type | description                                         |
+|--------------------|-----------|-----------------------------------------------------|
+| `post_key`         | string    | Unique identifier of the post                      |
+| `created_at_hour`  | datetime  | The hour of the sharing activity                   |
+| `count`            | integer   | Number of shares the post received in that hour    |
 
-post_comment_created_train
 
-- post_key
-- created_at_hour
-- count
+### Table: `post_comment_created_train`
 
-post_liked_train
+| column_name        | data_type | description                                         |
+|--------------------|-----------|-----------------------------------------------------|
+| `post_key`         | string    | Unique identifier of the post                      |
+| `created_at_hour`  | datetime  | The hour of the comment activity                   |
+| `count`            | integer   | Number of comments the post received in that hour  |
 
-- post_key
-- created_at_hour
-- count
 
-post_collected_train
+### Table: `post_liked_train`
 
-- post_key
-- created_at_hour
-- count
+| column_name        | data_type | description                                         |
+|--------------------|-----------|-----------------------------------------------------|
+| `post_key`         | string    | Unique identifier of the post                      |
+| `created_at_hour`  | datetime  | The hour of the like activity                      |
+| `count`            | integer   | Number of likes the post received in that hour     |
+
+
+### Table: `post_collected_train`
+
+| column_name        | data_type | description                                         |
+|--------------------|-----------|-----------------------------------------------------|
+| `post_key`         | string    | Unique identifier of the post                      |
+| `created_at_hour`  | datetime  | The hour of the collection activity                |
+| `count`            | integer   | Number of times the post was bookmarked in that hour |
+
 
 ## Testing Dataset
 
