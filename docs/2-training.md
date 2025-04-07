@@ -1,5 +1,7 @@
-# 特徵工程
-經過探索性資料分析後，我們對訓練集又更認識了些。在進行特徵工程前，我們會先將我們的訓練集初步整理成以下格式：
+# Feature Engineering
+
+After conducting exploratory data analysis (EDA), we gained a deeper understanding of the training dataset. Before diving into feature engineering, we first organize the training dataset into the following format:
+
 ```
 <class 'pandas.core.frame.DataFrame'>
 RangeIndex: 793751 entries, 0 to 793750
@@ -16,17 +18,17 @@ dtypes: bool(1), int64(6), object(1)
 memory usage: 43.1+ MB
 ```
 
-而在本節裡我們會談到整個 data pipeline 過程將會使用到的技術和模型，包括了 over/undersampling，多項式轉換、One-hot 編碼和 Tree-based 模型。
+In this section, we will discuss the techniques and models used throughout the data pipeline, including over/undersampling, polynomial transformations, one-hot encoding, and tree-based models.
 
 !!! info
 
-    在訓練過程中，主要可分為三個階段：
+    The training process can be divided into three main stages:
 
-    1. 重抽樣（resampling）
-    2. 欄位轉換（column transformation）
-    3. 分類（classification）
+    1. Resampling
+    2. Column Transformation
+    3. Classification
 
-實際上，我們可將上述的三個階段表示為以下的 `Pipeline` 實體：
+These stages can be represented as the following `Pipeline` object:
 
 ```python
 cachedir = mkdtemp()
@@ -35,92 +37,94 @@ pipe = Pipeline(steps=[('resampler', 'passthrough'),
                        ('classifier', 'passthrough')],
                 memory=cachedir)
 ```
-在每個階段我們都會選擇兩到三種不同作法和幾組超參數設定，試圖找出最佳組合。
 
-## 不平衡資料集的處理（STAGE 1）
-首先，考慮一個二元分類問題，不平衡資料集指的是分類目標（$y$）絕大多數屬於某種類別（稱為 majority），僅有少部分屬於另種類別（稱為 minority）。
+For each stage, we experiment with two to three different approaches and several hyperparameter settings to identify the optimal combination.
 
-面對不平衡資料集時，若是不進行任何處理就直接進行訓練，則很有可能產出一個帶有偏見的（biased）模型，不分青紅皂白地預測絕大部分樣本為 majority 類別，而忽略了 minority 樣本的有用資訊。
+## Handling Imbalanced Datasets (STAGE 1)
 
-一種可能的解決辦法就是重抽樣（resampling），又可分為 oversampling 和 undersampling 兩種：
+In a binary classification problem, an imbalanced dataset refers to a scenario where the target variable ($y$) is predominantly of one class (majority) with only a small proportion belonging to the other class (minority). 
 
-- Oversampling 是增加 minority 樣本在資料集的比例。
-- Undersampling 則是減少 majority 樣本在資料集的比例。
+Training a model on such a dataset without addressing the imbalance often results in a biased model that predicts most samples as the majority class, ignoring valuable information from the minority class.
 
-兩種方法都能使得模型在訓練階段時，更聽取 minority 樣本的意見。最直觀的作法就是透過「隨機抽樣」，刪去 majority 樣本或增加 minority 樣本。
+A potential solution is resampling, which can be categorized into oversampling and undersampling:
 
-實際上，`imblearn` 套件正提供了 `RandomOverSampler` 和 `RandomUnderSampler` 供我們使用。不僅如此，它也提供了其它的重抽樣方法的實作，其中我們會使用到 `SMOTE` 和 `NearMiss` 兩種。以下是簡介：
+- **Oversampling**: Increases the proportion of minority samples in the dataset.
+- **Undersampling**: Reduces the proportion of majority samples in the dataset.
+
+Both methods help the model pay more attention to minority samples during training. The simplest approach is random sampling, where majority samples are removed, or minority samples are duplicated.
+
+The `imblearn` library provides implementations for various resampling techniques, including `RandomOverSampler` and `RandomUnderSampler`. Additionally, we utilize `SMOTE` and `NearMiss`. Below is a brief overview:
 
 ### SMOTE
-SMOTE（Synthetic Minority Oversampling Technique）是 oversampling 技術的一種，它會在 minority 樣本之間合成新的 minority 樣本，從而增加 minority 類別的比例。示意圖如下所示：
+SMOTE (Synthetic Minority Oversampling Technique) is an oversampling method that synthesizes new minority samples between existing ones, increasing the proportion of the minority class. The following diagram illustrates this:
 
 ![](https://taweihuang.hpd.io/wp-content/uploads/2018/12/%E8%9E%A2%E5%B9%95%E5%BF%AB%E7%85%A7-2019-01-06-%E4%B8%8B%E5%8D%8810%E3%80%8223%E3%80%8257.png)
-[圖片來源](https://taweihuang.hpd.io/2018/12/30/imbalanced-data-sampling-techniques/)
+[Image Source](https://taweihuang.hpd.io/2018/12/30/imbalanced-data-sampling-techniques/)
 
 ### NearMiss
-NearMiss 則是 undersampling 技術的一種，共有三種版本，其中我們只提第一版。NearMiss-1 會計算所有 majority 樣本前 $k$ 個 minority nearest neighbors 的平均距離，刪去那些最靠近 minority 樣本的 majority 樣本，直到兩種類別的比例為 1：1。示意圖如下：
+NearMiss is an undersampling method with three versions. We focus on NearMiss-1, which calculates the average distance of all majority samples to their $k$ nearest minority neighbors and removes the majority samples closest to the minority samples until the class ratio is 1:1. The following diagram illustrates this:
+
 <img src="https://imbalanced-learn.readthedocs.io/en/stable/_images/sphx_glr_plot_illustration_nearmiss_0011.png" height="350">
-[圖片來源](https://imbalanced-learn.readthedocs.io/en/stable/under_sampling.html#mathematical-formulation)
+[Image Source](https://imbalanced-learn.readthedocs.io/en/stable/under_sampling.html#mathematical-formulation)
 
-## 多項式轉換和 One-hot 編碼（STAGE 2）
-接著，我們透過 `sklearn` 的 `PolynomialFeatures` 和 `OneHotEncoder`，替不同欄位做特徵轉換：
+## Polynomial Transformation and One-hot Encoding (STAGE 2)
 
-- 針對 `shared_count`, `comment_count`, `liked_count`, `collected_count` 四個特徵，我們會進行二次方的多項式轉換，試圖捕捉特徵的非線性關係和彼此之間的交互作用。
-- 針對 `weekday` 特徵，會從整數型態（`0` - `6`，依序代表星期一至星期六）轉換成 one-hot 格式，例如 `[1, 0, 0, 0, 0, 0, 0]` 代表的是星期一。
+Next, we use `sklearn`'s `PolynomialFeatures` and `OneHotEncoder` to transform specific features:
 
-## Tree-based 集成模型（STAGE 3）
-最後，分類模型我們主要以 tree-based 的集成（ensemble）模型作為我們的主要選擇．這當中包括了 `AdaBoostClassifier`, `GradientBoostingClassifier` 和 `XGBClassifier`。主要有幾點考量：
+- For `shared_count`, `comment_count`, `liked_count`, and `collected_count`, we apply second-degree polynomial transformations to capture non-linear relationships and interactions between features.
+- For the `weekday` feature, we convert integer values (`0` - `6`, representing Monday to Sunday) into one-hot encoded vectors, e.g., `[1, 0, 0, 0, 0, 0, 0]` for Monday.
 
-- 對特徵的單調性轉換（monotonic transformation）具有不變性（invariant），因此可以減少許多特徵轉換的工作。
-- 也因為減少許多特徵轉換，因此模型的可解釋性高，對特徵的理解也相對好理解。
-- 面對大型且複雜的資料集時，模型成效好，時常是 Kaggle 的常勝軍（特指 `XGBoost`, `LightGBM`, `CatBoost` 套件）。
+## Tree-based Ensemble Models (STAGE 3)
 
-集成學習（ensemble learning）主要可分為兩種：Bagging（bootstrap aggregating）和 Boosting。
+For classification, we primarily use tree-based ensemble models, including `AdaBoostClassifier`, `GradientBoostingClassifier`, and `XGBClassifier`. These models are chosen for several reasons:
+
+- They are invariant to monotonic transformations of features, reducing the need for extensive feature engineering.
+- They offer high interpretability, making it easier to understand feature importance.
+- They perform well on large and complex datasets and are often top performers in Kaggle competitions (e.g., `XGBoost`, `LightGBM`, `CatBoost`).
+
+Ensemble learning can be categorized into Bagging (bootstrap aggregating) and Boosting.
 
 ### Bagging
-Bagging 最有名的一種應用就是隨機森林（random forest），模型內會建立多顆決策樹，並透過自助式抽樣法（bootstrap sampling）和隨機挑選某幾個特徵欄位，讓每顆樹只學習到局部特徵，最後整合所有決策樹的觀點，做出最後預測結果。
+The most well-known Bagging application is Random Forest, which builds multiple decision trees using bootstrap sampling and random feature selection. Each tree learns a subset of features, and their predictions are aggregated for the final result.
 
 ### Boosting
 #### Adaptive Boosting
-Boosting 的應用相對 Bagging 則多了許多，最初期的就是 Adaptive boosting（AdaBoost），它的核心概念是依序建立 $T$ 個弱學習器（weak learner）$h_t(x)$，每個模型會更關注在前個模型分類錯誤的那些樣本上。不僅如此，每個模型都將會被賦予一個模型權重 $\alpha_t$，該權重必須反映兩件事：
+Adaptive Boosting (AdaBoost) sequentially builds $T$ weak learners $h_t(x)$, with each model focusing on samples misclassified by the previous one. Each model is assigned a weight $\alpha_t$ based on its performance:
 
-- 模型權重越高，代表該模型效果較好。
-- 模型權重越低，代表該模型效果較差。
+- Higher weights indicate better performance.
+- Lower weights indicate worse performance.
 
-如此一來，最終模型 $H(x)$ 就是蒐集這 $T$ 個弱學習器（weak learner）的觀點，做出最終分類。詳細內容可參考我過去所做的這篇[筆記](https://hackmd.io/@kcl10/HyXNoqOL8)。
+The final model $H(x)$ aggregates the predictions of all $T$ weak learners. For more details, refer to this [note](https://hackmd.io/@kcl10/HyXNoqOL8).
 
 #### Gradient Boosting
-梯度提升技術通常會與決策樹搭配使用，它的核心概念是依序建立 $T$ 個模型 $h_t(x)$，每個階段的模型都是在預測前個階段所有樣本的梯度方向（虛擬殘差）。最終模型 $H(x)$ 就是將前幾個模型加總起來（additive model），做出最終分類。詳細數學式推導可參考我過去所做的這篇[筆記](https://hackmd.io/@kcl10/B1GKRg9L8)。
+Gradient Boosting builds $T$ models $h_t(x)$ sequentially, where each model predicts the gradient (pseudo-residuals) of the previous model's errors. The final model $H(x)$ is the sum of all previous models. For mathematical derivations, refer to this [note](https://hackmd.io/@kcl10/B1GKRg9L8).
 
 #### Extreme Gradient Boosting
-XGBoost 是基於梯度提升技術的一個套件，其中又做了相當多的優化，包括 weighted quantile sketch, parallel learning, cache-aware access 等。詳細內容可參考這篇[論文](https://www.kdd.org/kdd2016/papers/files/rfp0697-chenAemb.pdf)。
+XGBoost is an optimized implementation of Gradient Boosting with enhancements like weighted quantile sketch, parallel learning, and cache-aware access. For more details, refer to this [paper](https://www.kdd.org/kdd2016/papers/files/rfp0697-chenAemb.pdf).
 
+## Hyperparameter Optimization
 
-
-
-## 超參數優化（Hyperparameter Optimization）
-大致上瞭解訓練過程將會使用的技術後，我們要開始設定每個階段可能的作法及其超參數組合。整理如下：
+After understanding the techniques used in each stage, we define the possible methods and hyperparameter combinations for each stage as follows:
 
 **Resampler**
-- `passthrough`：不做任何重抽樣。
-- `NearMiss`：使用預設參數。
-- `SMOTE`：使用預設參數。
+- `passthrough`: No resampling.
+- `NearMiss`: Default parameters.
+- `SMOTE`: Default parameters.
 
 **Column Transformer**
-- `passthrough`：不做任何特徵轉換。
-- `col_trans`：針對不同欄位進行二項式轉換和 one-hot 編碼。
+- `passthrough`: No feature transformation.
+- `col_trans`: Apply polynomial transformations and one-hot encoding.
 
 **Classifier**
-- `AdaBoostClassifier`：使用預設參數，其中又會設定樹深限制在 `[1, 2, 3]` 層。
-- `GradientBoostingClassifier`, `XGBClassifier`：使用預設參數，其中又會設定學習率在 `[0.025, 0.05, 0.1]`。
+- `AdaBoostClassifier`: Default parameters with tree depth limited to `[1, 2, 3]`.
+- `GradientBoostingClassifier`, `XGBClassifier`: Default parameters with learning rates `[0.025, 0.05, 0.1]`.
 
-不論哪個分類器，我們都會設定其內部有 `[90, 100, 110 , 120]` 棵決策樹。並且另外設定細部的超參數：
+For all classifiers, we set the number of decision trees to `[90, 100, 110, 120]` and tune additional hyperparameters.
 
-三個階段交叉下來共有 216 種組合需要嘗試，個數有點過多，我們時間並不夠。實驗下來，經過特徵轉換的模型普遍效果不好，初步推估是因為前面 EDA 所提到的，變數之間的相關性普遍偏高，經過二次方多項式轉換其實成效並不高，甚至有可能降低成效。
+Initially, there are 216 combinations to test, which is too many given time constraints. Experiments show that models with feature transformations generally perform worse, likely due to high feature correlations identified during EDA. As a result, we omit the "Feature Transformation" stage, reducing the combinations to **108**. We use `GridSearchCV` with `cv=3` to find the best combination.
 
-因此，我們決定省略了「特徵轉換」階段，最終共有 **108** 種組合需要嘗試，透過 `GridSearchCV` 找尋最佳組合，設定 `cv=3`。
+The parameter grid is defined as follows:
 
-參數組合的程式碼參考如下：
 ```python
 # poly_cols = ['shared_count', 'comment_count', 'liked_count', 'collected_count']
 # col_trans = make_column_transformer((OneHotEncoder(dtype='int'), ['weekday']),
