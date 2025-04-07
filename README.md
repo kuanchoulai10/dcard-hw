@@ -8,6 +8,41 @@ On Dcard's app and website, there is an important section called "Trending Posts
 
 To simplify the problem, **we define a trending post as one that receives at least 1000 likes within 36 hours of being posted.** During testing, we will calculate whether a post's like count exceeds 1000 within 36 hours to determine the ground truth or prediction benchmark.
 
+!!! abstract
+
+    ```shell
+    $ tree
+    .
+    ├── eda_evaluation.ipynb: A Jupyter notebook used for generating visualizations.
+    ├── outputs
+    │   ├── best_model.h5: The best model obtained after training.
+    │   ├── cv_results.csv: Cross-validation results.
+    │   └── output.csv: Prediction results for the public dataset.
+    ├── predict.py: A utility script for making predictions.
+    ├── preprocessing.py: A shared utility script for database connections, preprocessing, and other common functions.
+    ├── requirements.txt: A list of required Python packages and their versions.
+    └── training.py: A utility script for training the model.
+    ```
+
+    The training dataset includes articles spanning from April 1, 2019, to the end of October 2019, covering approximately seven months. The dataset contains around 793,000 articles, of which about 2.32% (approximately 18,000 articles) are classified as popular. Through exploratory data analysis, we observed high correlations among variables. Additionally, the timing of article publication significantly influences the proportion of popular articles and the total number of likes within the first 36 hours of posting.
+
+    We decided to use a "binary classification model without considering sequential information" as our primary approach, focusing on handling imbalanced datasets, tree-based ensemble models, and subsequent discussions. The training process was divided into three main stages:
+
+    1. Resampling
+    2. Column Transformation
+    3. Classification
+
+    After experimentation, we opted to omit the "feature transformation" stage. In total, 108 combinations were tested using `GridSearchCV` with `cv=3` to find the optimal configuration.
+
+    Using the f1-score as the evaluation metric, the best-performing model was an `AdaBoostClassifier` without any resampling. This model consisted of 100 decision trees, each limited to a depth of 2. The average f1-score from cross-validation was 0.56, while the f1-score on the public test set was 0.53. Key findings from the experiments include:
+    
+    - Different resampling strategies significantly impact the f1-score.
+    - Resampling strategies can effectively identify genuinely popular articles. However, this comes at the cost of reduced trust in the model's predictions of popular articles.
+    - Under both "SMOTE resampling" and "no resampling" scenarios, the choice of classifier did not lead to substantial changes in the f1-score.
+    - The choice of classifier had a relatively minor impact on the f1-score.
+
+    Finally, we discussed several potential future directions, including exploring other resampling techniques, alternative evaluation metrics, and incorporating sequential information.
+
 ## Training Dataset
 
 The training dataset covers posts from April 1, 2019, to the end of October 2019, approximately 7 months. It contains around 794,000 posts, of which about 2.32% (approximately 18,000 posts) are trending.

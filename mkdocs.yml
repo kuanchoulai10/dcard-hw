@@ -2,9 +2,8 @@ site_name: side-projects/dcard-hw
 docs_dir: .
 nav:
   - README.md
-  - docs/1-summary.md
-  - docs/2-eda.md
-  - docs/3-training.md
-  - docs/4-evaluation.md
-  - docs/5-resampling.md
+  - docs/1-eda.md
+  - docs/2-training.md
+  - docs/3-evaluation.md
+  - docs/4-resampling.md
   - eda_evaluation.ipynb
