@@ -1,114 +1,121 @@
-# 探索性資料分析 (EDA)
-首先，我們拿到資料集時，第一步就是觀察資料集的相關資訊，包括各 tables 的資料筆數、欄位等。以下是 2020/04/13 更新過後的資料集相關資訊：
+# Exploratory Data Analysis (EDA)
+
+When we first receive a dataset, the initial step is to examine its details, including the number of records and columns in each table. Below is the dataset information as of the update on 2020/04/13:
 
 ```
-posts_train                總共有   793,751 筆資料和 3 個欄位
-posts_test                 總共有   225,986 筆資料和 3 個欄位
-post_shared_train          總共有   304,260 筆資料和 3 個欄位
-post_shared_test           總共有    83,376 筆資料和 3 個欄位
-post_comment_created_train 總共有 2,372,228 筆資料和 3 個欄位
-post_comment_created_test  總共有   607,251 筆資料和 3 個欄位
-post_liked_train           總共有 3,395,903 筆資料和 3 個欄位
-post_liked_test            總共有   908,910 筆資料和 3 個欄位
-post_collected_train       總共有 1,235,126 筆資料和 3 個欄位
-post_collected_test        總共有   275,073 筆資料和 3 個欄位
+posts_train                Contains 793,751 records and 3 columns
+post_shared_train          Contains 304,260 records and 3 columns
+post_comment_created_train Contains 2,372,228 records and 3 columns
+post_liked_train           Contains 3,395,903 records and 3 columns
+post_collected_train       Contains 1,235,126 records and 3 columns
 ```
 
-主要可分為訓練集和測試集兩類。為避免 data leakage，在進行 EDA 時僅能觀察訓練集，因此我們先把測試集有關的 tables 先擱置在一旁，不予以討論。
+```
+posts_test                 Contains 225,986 records and 3 columns
+post_shared_test           Contains 83,376 records and 3 columns
+post_comment_created_test  Contains 607,251 records and 3 columns
+post_liked_test            Contains 908,910 records and 3 columns
+post_collected_test        Contains 275,073 records and 3 columns
+```
 
-訓練集的文章涵蓋日期範圍從 2019 年的 4 月 1 日開始，持續到同年 10 月底，共 7 個月左右。總篇數有 79.3 萬篇左右。我們的目的就是要建立一個預測模型，根據發文 10 小時內的序列資料，包括了分享數、評論數、愛心數、收藏數，去預測發文 36 小時內是否能達到 1,000 顆愛心，即「熱門文章」。
+The dataset is divided into training and testing sets. To avoid data leakage, only the training set is analyzed during EDA, leaving the testing set aside.
 
-訓練集當中約有 2.32% 的文章是熱門文章，約莫是 1.8 萬篇。很明顯地，訓練集是不平衡的資料集（imbalanced dataset）。因此，在資料前處理階段可能需要考慮 over/undersampling 的方法。不僅如此，在最後的評估階段也要討論其它可能的分類成效指標。
+The training set covers posts from April 1, 2019, to the end of October 2019, spanning approximately seven months with around 793,000 posts. The goal is to build a predictive model that uses 10-hour post metrics (e.g., shares, comments, likes, and saves) to predict whether a post will receive 1,000 likes within 36 hours, classifying it as a "popular post."
 
-## 問題定義
-根據題目，此份作業主要可以有四種做法，也就是「考不考慮序列資訊」和「迴歸預測／二元分類」這兩個軸度的交叉組合。可能的作法如下：
+Approximately 2.32% of the training posts are popular, equating to about 18,000 posts. This imbalance in the dataset necessitates techniques like over/undersampling during preprocessing and alternative evaluation metrics during model assessment.
 
-|                  | 迴歸預測 | 二元分類 |
-|:----------------:|----|--------|
-| **考慮序列資訊** | 循環式NN（RNN, GRU  etc.） </br> 傳統TS問題（ARMA, ARIMA etc.） | 同左|
-| **不考慮序列資訊** | Poisson 迴歸, SVM, tree-based 模型 etc. | Logistic 迴歸, SVM, tree-based 模型 etc.|
+## Problem Definition
 
-最佳組合肯定是「考慮序列資訊」和「迴歸預測」，根據發文 10 小時內的愛心數、評論數等欄位的「時間趨勢」，去預測發文 36 小時內的「愛心總數」，最後再根據閥值（愛心總數大於等於 1,000 等）判斷是否為「熱門文章」。
+The task can be approached in four ways, based on whether sequence information is considered and whether the problem is framed as regression or binary classification:
 
-然而，我們其實可以將問題簡化成不考慮序列資訊的二元分類問題，也就是將發文 10 小時內的愛心數、評論數等欄位個別加總起來，建立個二元分類模型，預測文章是否為「熱門文章」。
+|                  | Regression | Binary Classification |
+|:----------------:|------------|-----------------------|
+| **With Sequence Info** | RNNs (e.g., GRU), traditional time series models (e.g., ARMA, ARIMA) | Same as left |
+| **Without Sequence Info** | Poisson regression, SVM, tree-based models, etc. | Logistic regression, SVM, tree-based models, etc. |
 
-因時間考量以及報告完整性，我們決定以「不考慮序列資訊」的「二元分類模型」作為我們主要的內容，並且聚焦在不平衡資料集的處理、tree-based 模型和後續討論上。
+The ideal approach is "with sequence info" and "regression," leveraging the 10-hour metrics' trends to predict the 36-hour total likes, then classifying posts based on a threshold (e.g., ≥1,000 likes). However, for simplicity and time constraints, we focus on "without sequence info" and "binary classification," aggregating 10-hour metrics and building a binary classification model to predict popular posts. The focus will be on handling imbalanced data, tree-based models, and subsequent discussions.
 
-## 變數間的線性關係
-我們可以將資料集簡化成發文 10 小時內的分享總數、評論總數、愛心總數和收藏總數，並透過相關係數圖熱點圖 (heatmap)，觀察它們彼此之間和發文 36 小時內的愛心總數的關係吧：
+## Linear Relationships Between Variables
+
+We simplify the dataset to include total shares, comments, likes, and saves within 10 hours and use a heatmap to observe their relationships with the total likes within 36 hours:
 
 ![](https://i.imgur.com/xvxqb6z.png)
 
 !!! info
 
-    從這張圖可以發現幾件事：
+    Key observations from the heatmap:
 
-    - 發文 36 小時內的愛心總數與 10 小時內的愛心總數呈現中度線性正相關（.58）；與分享總數、收藏總數呈現中度線性正相關（.36）；與評論總數呈現低度線性正相關（.17）。
-    - 發文 10 小時內的愛心總數與分享總數、收藏總數呈現中度線性正相關，相關係數分別為 .63 和 .61。
-    - 發文 10 小時內的分享總數和收藏總數呈現中度線性正相關（.48）。
+    - Total likes within 36 hours moderately correlate with total likes within 10 hours (.58), shares (.36), and saves (.36), but weakly with comments (.17).
+    - Total likes within 10 hours moderately correlate with shares (.63) and saves (.61).
+    - Shares and saves within 10 hours moderately correlate (.48).
 
+In simple terms, posts with more likes within 10 hours tend to have more shares and saves. However, the strongest predictor of total likes within 36 hours is the likes within 10 hours. Comments show little correlation with total likes.
 
-講白話文，就是發文 10 小時內的愛心數越多，普遍也可以觀察到發文 10 小時內的分享數、收藏數越多；然而發文 36 小時內的愛心總數，比起其它變數，還是與發文 10 小時內所得到的愛心數較相關。文章的評論多寡普遍上不會與發文 36 小時內的愛心總數有太大的相關。
+## Heatmaps of Key Metrics
 
-## 各項指標熱點圖
 !!! danger
 
-    為避免暴露過多 Dcard 的商業資訊，圖中都不顯示色條（`cbar=False`），只顯示相對關係。
+    To protect Dcard's proprietary information, color bars (`cbar=False`) are omitted, showing only relative relationships.
 
-#### 發文總數
-再來，我們來觀察在不同的時間區段之下的發文總數是否有所不同：
+### Total Posts by Time
+
+We examine whether the number of posts varies across different time periods:
 
 ![](https://i.imgur.com/LaPJRkL.png)
 
-橫軸是 24 小時，縱軸是星期一至星期日。
+The x-axis represents 24 hours, and the y-axis represents days of the week.
 
 !!! info
 
-    我們可以觀察到幾個現象：
+    Observations:
 
-    - 不論平日或假日，發文多集中於中午、下午、傍晚時段（12:00 - 18:00），平日略高於假日。
-    - 次高的發文熱門時段是平日的早上時段（05:00 - 12:00）。
-    - 不論平日或假日，晚上時段（18:00 - 01:00）的發文數總是相對較少。
+    - Posts are concentrated during midday, afternoon, and evening (12:00–18:00), with weekdays slightly higher than weekends.
+    - The second-highest posting period is weekday mornings (05:00–12:00).
+    - Posts are relatively fewer during evenings (18:00–01:00) on both weekdays and weekends.
 
+These trends are reasonable, as students primarily post during the day. The relatively high number of early morning posts might be due to companies posting content before students wake up.
 
-這些現象也算是合情合理，大學生主要發文都是集中在白天，晚上可能有事要忙，所以發文數較少。唯一比較不合理的是為什麼清晨時段發文數也不算少？（初步推估有可能是各家公司需要趕在大學生起床前發文，因此固定會在凌晨發文）
+### Popular Post Proportion by Time
 
-#### 熱門文章比例
-觀察完不同時段下的發文總數後，我們接著想要知道在不同時段下的熱門文章比例如何？是否在某些時段下發文，更容易成為熱門文章？
+Next, we analyze whether certain time periods have a higher proportion of popular posts:
 
 ![](https://i.imgur.com/89isGTC.png)
 
 !!! info
 
-    我們可以發現，在晚間時段和假日凌晨時段的發文，會有比較高的比例是熱門文章，初步推估是因為使用者通常都在這時候活絡。透過熱點圖可以知道，熱門文章的比例確實會因為不同時段下而有所不同。
+    Observations:
 
+    - Posts during late-night and early-morning hours on weekends have a higher likelihood of being popular, likely due to increased user activity during these times.
+    - The heatmap confirms that the proportion of popular posts varies by time.
 
-#### 前 10 小時內的平均愛心總數
-我們接著來觀察在不同時段下的發文，其 10 小時內的平均愛心數是否有所不同？
+### Average Likes Within 10 Hours by Time
+
+We then examine the average likes within 10 hours for posts made at different times:
 
 ![](https://i.imgur.com/62gyK11.png)
 
 !!! info
 
-    我們可以觀察到兩個現象：
+    Observations:
 
-    - 從晚上延續至早上時段的發文（21:00 - 11:00），10 小時內的愛心總數，平均而言普遍較多。
-    - 從中午延續至晚上時段的發文（11:00 - 21:00），10 小時內的愛心總數，平均而言普遍較少，尤其是在傍晚、晚餐時段。
+    - Posts made between 21:00–11:00 generally receive more likes within 10 hours.
+    - Posts made between 11:00–21:00, especially during late afternoon and dinner hours, receive fewer likes on average.
 
+This difference might be because students are less active during late afternoon and dinner hours but more active during the evening. Early morning posts are also visible to students the next day.
 
-會有如此的差異初步推估是因為傍晚、晚餐時段是大學生下課、吃飯的時段，較少人會瀏覽Dcard；而晚間是大學生活絡的時段，會有較多人使用 Dard；而凌晨發文較少，隔天早上大學生通常也能看到凌晨的發文。
+### Average Likes Within 36 Hours by Time
 
-#### 前 36 小時內的平均愛心總數
-我們最後則是來看看在不同時段下發文，其 36 小時內的平均愛心數是否有所不同？
+Finally, we analyze the average likes within 36 hours for posts made at different times:
 
 ![](https://i.imgur.com/1gm3nvR.png)
 
-大致上的趨勢都跟前面一致，因此不多做贅述。
+The trends are consistent with the 10-hour analysis and are not elaborated further.
 
-#### 小結
+### Summary
+
 !!! info
 
-    大致上發現兩件事：
+    Key takeaways:
 
-    - 變數之間的相關性普遍偏高，若在特徵工程時，將這些欄位經過多項式轉換（`PolynomialFeatures`）的話，效果可能並不如預期。
-    - 在什麼時間點發文確實會影響熱門文章的比例，以及愛心數。必須將其資訊納入模型考慮之中。
+    - Variables are generally highly correlated. Polynomial transformations (`PolynomialFeatures`) may not yield significant improvements during feature engineering.
+    - Posting time significantly impacts the proportion of popular posts and the number of likes, and this information should be incorporated into the model.
